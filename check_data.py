@@ -62,3 +62,36 @@ df[numerical_cols].hist(figsize=(12, 8), bins=20)
 plt.suptitle("Numerical Feature Distributions")
 plt.tight_layout()
 plt.show()
+
+
+
+
+# Feature vs Target EDA
+
+numerical_cols = [
+    "age",
+    "creatinine_phosphokinase",
+    "ejection_fraction",
+    "platelets",
+    "serum_creatinine",
+    "serum_sodium"
+]
+
+for col in numerical_cols:
+    df.boxplot(column=col, by="DEATH_EVENT")
+
+    plt.title(f"{col} vs DEATH_EVENT")
+    plt.suptitle("")
+    plt.xlabel("DEATH_EVENT (0 = No Death, 1 = Death)")
+    plt.ylabel(col)
+    plt.tight_layout()
+    plt.show()
+
+
+
+
+
+
+
+
+
