@@ -66,6 +66,29 @@ plt.show()
 
 
 
+# # Feature vs Target EDA
+
+# numerical_cols = [
+#     "age",
+#     "creatinine_phosphokinase",
+#     "ejection_fraction",
+#     "platelets",
+#     "serum_creatinine",
+#     "serum_sodium"
+# ]
+
+# for col in numerical_cols:
+#     df.boxplot(column=col, by="DEATH_EVENT")
+
+#     plt.title(f"{col} vs DEATH_EVENT")
+#     plt.suptitle("")
+#     plt.xlabel("DEATH_EVENT (0 = No Death, 1 = Death)")
+#     plt.ylabel(col)
+#     plt.tight_layout()
+#     plt.show()
+
+
+
 # Feature vs Target EDA
 
 numerical_cols = [
@@ -77,8 +100,21 @@ numerical_cols = [
     "serum_sodium"
 ]
 
+print("\nFeature vs Target Analysis")
+
 for col in numerical_cols:
-    df.boxplot(column=col, by="DEATH_EVENT")
+
+    print(f"\n{col}")
+
+    print(
+        df.groupby("DEATH_EVENT")[col]
+        .agg(["mean", "median", "min", "max"])
+    )
+
+    df.boxplot(
+        column=col,
+        by="DEATH_EVENT"
+    )
 
     plt.title(f"{col} vs DEATH_EVENT")
     plt.suptitle("")
@@ -86,10 +122,6 @@ for col in numerical_cols:
     plt.ylabel(col)
     plt.tight_layout()
     plt.show()
-
-
-
-
 
 
 
