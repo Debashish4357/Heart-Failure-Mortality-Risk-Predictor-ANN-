@@ -66,29 +66,6 @@ plt.show()
 
 
 
-# # Feature vs Target EDA
-
-# numerical_cols = [
-#     "age",
-#     "creatinine_phosphokinase",
-#     "ejection_fraction",
-#     "platelets",
-#     "serum_creatinine",
-#     "serum_sodium"
-# ]
-
-# for col in numerical_cols:
-#     df.boxplot(column=col, by="DEATH_EVENT")
-
-#     plt.title(f"{col} vs DEATH_EVENT")
-#     plt.suptitle("")
-#     plt.xlabel("DEATH_EVENT (0 = No Death, 1 = Death)")
-#     plt.ylabel(col)
-#     plt.tight_layout()
-#     plt.show()
-
-
-
 # Feature vs Target EDA
 
 numerical_cols = [
@@ -124,6 +101,51 @@ for col in numerical_cols:
     plt.show()
 
 
+# Complete Feature vs Target Summary
 
+print("\n" + "=" * 60)
+print("FEATURE vs TARGET SUMMARY")
+print("=" * 60)
+
+
+# Numerical features
+numerical_cols = [
+    "age",
+    "creatinine_phosphokinase",
+    "ejection_fraction",
+    "platelets",
+    "serum_creatinine",
+    "serum_sodium"
+]
+
+print("\nNumerical Features:")
+
+for col in numerical_cols:
+
+    summary = df.groupby("DEATH_EVENT")[col].agg(
+        ["mean", "median", "min", "max"]
+    )
+
+    print(f"\n{col}")
+    print(summary)
+
+
+# Binary features
+binary_feature_cols = [
+    "anaemia",
+    "diabetes",
+    "high_blood_pressure",
+    "sex",
+    "smoking"
+]
+
+print("\n\nBinary Features:")
+
+for col in binary_feature_cols:
+
+    summary = df.groupby("DEATH_EVENT")[col].mean()
+
+    print(f"\n{col}")
+    print(summary)
 
 
