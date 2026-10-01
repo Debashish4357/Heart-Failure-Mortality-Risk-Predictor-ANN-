@@ -149,3 +149,16 @@ for col in binary_feature_cols:
     print(summary)
 
 
+# Feature Correlation Analysis
+
+print("\n" + "=" * 60)
+print("FEATURE CORRELATION WITH TARGET")
+print("=" * 60)
+
+# Exclude leakage column and calculate correlation
+correlation = df.drop(columns=["time"]).corr()["DEATH_EVENT"].sort_values(
+    ascending=False
+)
+
+print("\nCorrelation of features with DEATH_EVENT:")
+print(correlation)
