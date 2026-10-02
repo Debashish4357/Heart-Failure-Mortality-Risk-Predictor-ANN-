@@ -199,3 +199,69 @@ print("\nFirst 10 OOF probabilities:")
 print(oof_probabilities.head(10))
 
 
+
+# ============================================================
+# STEP 4 — THRESHOLD ANALYSIS
+# ============================================================
+
+print("\n" + "=" * 60)
+print("THRESHOLD ANALYSIS")
+print("=" * 60)
+
+
+# Thresholds to evaluate
+thresholds = [
+    0.30,
+    0.35,
+    0.40,
+    0.45,
+    0.50,
+    0.55,
+    0.60,
+    0.65,
+    0.70
+]
+
+
+print("\nThreshold Results:")
+print(
+    f"{'Threshold':<12}"
+    f"{'Accuracy':<12}"
+    f"{'Sensitivity':<15}"
+    f"{'Specificity':<15}"
+)
+
+
+# Evaluate each threshold
+for threshold in thresholds:
+
+    # Convert probabilities into class predictions
+    y_pred_threshold = (
+        oof_probabilities >= threshold
+    ).astype(int)
+
+    # Calculate confusion matrix
+    tn, fp, fn, tp = confusion_matrix(
+        y,
+        y_pred_threshold
+    ).ravel()
+
+    # Calculate metrics
+    accuracy = accuracy_score(
+        y,
+        y_pred_threshold
+    )
+
+    sensitivity = tp / (tp + fn)
+
+    specificity = tn / (tn + fp)
+
+    print(
+        f"{threshold:<12.2f}"
+        f"{accuracy:<12.4f}"
+        f"{sensitivity:<15.4f}"
+        f"{specificity:<15.4f}"
+    )
+
+
+    
