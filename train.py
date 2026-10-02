@@ -107,3 +107,95 @@ print(f"Mean Accuracy: {sum(accuracy_scores) / len(accuracy_scores):.4f}")
 print(f"Mean AUROC: {sum(auroc_scores) / len(auroc_scores):.4f}")
 print(f"Mean Sensitivity: {sum(sensitivity_scores) / len(sensitivity_scores):.4f}")
 print(f"Mean Specificity: {sum(specificity_scores) / len(specificity_scores):.4f}")
+
+
+
+# ============================================================
+# STEP 3 — OUT-OF-FOLD PREDICTIONS
+# ============================================================
+
+print("\n" + "=" * 60)
+print("OUT-OF-FOLD PREDICTIONS")
+print("=" * 60)
+
+
+# Store one probability prediction for every patient
+oof_probabilities = [None] * len(X)
+
+
+# 5-Fold Cross Validation
+for fold, (train_index, val_index) in enumerate(
+    skf.split(X, y),
+    start=1
+):
+
+    print(f"\nProcessing Fold {fold}...")
+
+    # Split data
+    X_train = X.iloc[train_index]
+    X_val = X.iloc[val_index]
+
+    y_train = y.iloc[train_index]
+
+    # Scale using training data only
+    scaler = StandardScaler()
+
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_val_scaled = scaler.transform(X_val)
+
+    # Create Logistic Regression model
+    model = LogisticRegression(
+        max_iter=1000,
+        random_state=42
+    )
+
+    # Train model
+    model.fit(
+        X_train_scaled,
+        y_train
+    )
+
+    # Generate probability predictions
+    y_prob = model.predict_proba(
+        X_val_scaled
+    )[:, 1]
+
+    # Store predictions at their original patient positions
+    for index, probability in zip(
+        val_index,
+        y_prob
+    ):
+        oof_probabilities[index] = probability
+
+    print(
+        f"Stored {len(y_prob)} validation predictions"
+    )
+
+
+# Convert to pandas Series
+oof_probabilities = pd.Series(
+    oof_probabilities
+)
+
+
+# Verify results
+print("\nOOF prediction count:", len(oof_probabilities))
+print(
+    "Missing OOF predictions:",
+    oof_probabilities.isna().sum()
+)
+
+print(
+    "Minimum probability:",
+    oof_probabilities.min()
+)
+
+print(
+    "Maximum probability:",
+    oof_probabilities.max()
+)
+
+print("\nFirst 10 OOF probabilities:")
+print(oof_probabilities.head(10))
+
+
