@@ -265,3 +265,85 @@ for threshold in thresholds:
 
 
     
+
+    # ============================================================
+# STEP 4.6 — VALIDATION-DERIVED THRESHOLD
+# Using Youden's J Statistic
+# ============================================================
+
+print("\n" + "=" * 60)
+print("VALIDATION-DERIVED THRESHOLD")
+print("=" * 60)
+
+
+threshold_results = []
+
+
+for threshold in thresholds:
+
+    # Convert probabilities into predictions
+    y_pred_threshold = (
+        oof_probabilities >= threshold
+    ).astype(int)
+
+    # Confusion matrix
+    tn, fp, fn, tp = confusion_matrix(
+        y,
+        y_pred_threshold
+    ).ravel()
+
+    # Metrics
+    sensitivity = tp / (tp + fn)
+    specificity = tn / (tn + fp)
+
+    # Youden's J
+    youden_j = sensitivity + specificity - 1
+
+    threshold_results.append({
+        "threshold": threshold,
+        "sensitivity": sensitivity,
+        "specificity": specificity,
+        "youden_j": youden_j
+    })
+
+
+# Find threshold with highest Youden's J
+best_threshold_result = max(
+    threshold_results,
+    key=lambda x: x["youden_j"]
+)
+
+
+print("\nThreshold Evaluation:")
+
+for result in threshold_results:
+
+    print(
+        f"Threshold: {result['threshold']:.2f} | "
+        f"Sensitivity: {result['sensitivity']:.4f} | "
+        f"Specificity: {result['specificity']:.4f} | "
+        f"Youden J: {result['youden_j']:.4f}"
+    )
+
+
+print("\nSelected validation-derived threshold:")
+
+print(
+    f"Threshold: "
+    f"{best_threshold_result['threshold']:.2f}"
+)
+
+print(
+    f"Sensitivity: "
+    f"{best_threshold_result['sensitivity']:.4f}"
+)
+
+print(
+    f"Specificity: "
+    f"{best_threshold_result['specificity']:.4f}"
+)
+
+print(
+    f"Youden J: "
+    f"{best_threshold_result['youden_j']:.4f}"
+)
