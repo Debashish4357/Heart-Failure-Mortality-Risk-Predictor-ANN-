@@ -347,3 +347,81 @@ print(
     f"Youden J: "
     f"{best_threshold_result['youden_j']:.4f}"
 )
+
+
+
+
+# ============================================================
+# STEP 5 — CALIBRATION
+# ============================================================
+
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import brier_score_loss
+import matplotlib.pyplot as plt
+
+
+print("\n" + "=" * 60)
+print("CALIBRATION ANALYSIS")
+print("=" * 60)
+
+
+# ============================================================
+# STEP 5.1 — Prepare OOF Probabilities
+# ============================================================
+
+# Convert OOF predictions to NumPy array
+oof_probabilities_array = oof_probabilities.to_numpy()
+
+print("\nOOF probabilities prepared.")
+print("Number of predictions:", len(oof_probabilities_array))
+
+
+# ============================================================
+# STEP 5.2 — Calibration Curve
+# ============================================================
+
+prob_true, prob_pred = calibration_curve(
+    y,
+    oof_probabilities_array,
+    n_bins=5,
+    strategy="uniform"
+)
+
+
+print("\nCalibration values:")
+
+for predicted, actual in zip(
+    prob_pred,
+    prob_true
+):
+    print(
+        f"Predicted probability: {predicted:.4f} | "
+        f"Observed frequency: {actual:.4f}"
+    )
+
+
+# Plot calibration curve
+plt.figure(figsize=(7, 6))
+
+plt.plot(
+    prob_pred,
+    prob_true,
+    marker="o",
+    label="Logistic Regression"
+)
+
+plt.plot(
+    [0, 1],
+    [0, 1],
+    linestyle="--",
+    label="Perfect Calibration"
+)
+
+plt.xlabel("Mean Predicted Probability")
+plt.ylabel("Observed Frequency")
+plt.title("Calibration Curve")
+plt.legend()
+plt.grid()
+
+plt.tight_layout()
+plt.show()
