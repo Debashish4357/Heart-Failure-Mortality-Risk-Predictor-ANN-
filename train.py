@@ -111,7 +111,7 @@ print(f"Mean Specificity: {sum(specificity_scores) / len(specificity_scores):.4f
 
 
 # ============================================================
-# STEP 3 — OUT-OF-FOLD PREDICTIONS
+# OUT-OF-FOLD PREDICTIONS
 # ============================================================
 
 print("\n" + "=" * 60)
@@ -201,7 +201,7 @@ print(oof_probabilities.head(10))
 
 
 # ============================================================
-# STEP 4 — THRESHOLD ANALYSIS
+# THRESHOLD ANALYSIS
 # ============================================================
 
 print("\n" + "=" * 60)
@@ -267,7 +267,7 @@ for threshold in thresholds:
     
 
     # ============================================================
-# STEP 4.6 — VALIDATION-DERIVED THRESHOLD
+# VALIDATION-DERIVED THRESHOLD
 # Using Youden's J Statistic
 # ============================================================
 
@@ -352,7 +352,7 @@ print(
 
 
 # ============================================================
-# STEP 5 — CALIBRATION
+# CALIBRATION
 # ============================================================
 
 from sklearn.calibration import calibration_curve
@@ -366,7 +366,7 @@ print("=" * 60)
 
 
 # ============================================================
-# STEP 5.1 — Prepare OOF Probabilities
+# Prepare OOF Probabilities
 # ============================================================
 
 # Convert OOF predictions to NumPy array
@@ -377,7 +377,7 @@ print("Number of predictions:", len(oof_probabilities_array))
 
 
 # ============================================================
-# STEP 5.2 — Calibration Curve
+# Calibration Curve
 # ============================================================
 
 prob_true, prob_pred = calibration_curve(
@@ -425,3 +425,33 @@ plt.grid()
 
 plt.tight_layout()
 plt.show()
+
+
+
+# ============================================================
+#  BRIER SCORE
+# ============================================================
+
+brier_score = brier_score_loss(
+    y,
+    oof_probabilities_array
+)
+
+print("\nBrier Score:", round(brier_score, 4))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
