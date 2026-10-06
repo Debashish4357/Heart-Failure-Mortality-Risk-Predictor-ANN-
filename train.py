@@ -443,12 +443,23 @@ print("\nBrier Score:", round(brier_score, 4))
 
 
 
+# ============================================================
+# STEP 6 — FINAL ML EVALUATION
+# ============================================================
+
+from sklearn.metrics import (
+    accuracy_score,
+    roc_auc_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix
+)
 
 
-
-
-
-
+print("\n" + "=" * 60)
+print("FINAL LOGISTIC REGRESSION OOF EVALUATION")
+print("=" * 60)
 
 
 
