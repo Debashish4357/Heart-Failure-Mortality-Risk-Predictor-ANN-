@@ -462,6 +462,102 @@ print("FINAL LOGISTIC REGRESSION OOF EVALUATION")
 print("=" * 60)
 
 
+# ============================================================
+# STEP 6.1 — OOF Class Predictions
+# ============================================================
+
+# Use the validation-derived threshold selected earlier
+final_threshold = best_threshold_result["threshold"]
+
+oof_predictions = (
+    oof_probabilities_array >= final_threshold
+).astype(int)
+
+
+# ============================================================
+# STEP 6.2 — Accuracy
+# ============================================================
+
+oof_accuracy = accuracy_score(
+    y,
+    oof_predictions
+)
+
+
+# ============================================================
+# STEP 6.3 — AUROC
+# ============================================================
+
+oof_auroc = roc_auc_score(
+    y,
+    oof_probabilities_array
+)
+
+
+# ============================================================
+# STEP 6.4 — Confusion Matrix
+# ============================================================
+
+tn, fp, fn, tp = confusion_matrix(
+    y,
+    oof_predictions
+).ravel()
+
+
+# ============================================================
+# STEP 6.5 — Sensitivity and Specificity
+# ============================================================
+
+oof_sensitivity = tp / (tp + fn)
+
+oof_specificity = tn / (tn + fp)
+
+
+# ============================================================
+# STEP 6.6 — Precision
+# ============================================================
+
+oof_precision = precision_score(
+    y,
+    oof_predictions,
+    zero_division=0
+)
+
+
+# ============================================================
+# STEP 6.7 — F1 Score
+# ============================================================
+
+oof_f1 = f1_score(
+    y,
+    oof_predictions,
+    zero_division=0
+)
+
+
+# ============================================================
+# Final Results
+# ============================================================
+
+print("\nSelected Threshold:", round(final_threshold, 4))
+
+print("\nConfusion Matrix:")
+print(f"TN: {tn}")
+print(f"FP: {fp}")
+print(f"FN: {fn}")
+print(f"TP: {tp}")
+
+print("\nFinal OOF Metrics:")
+print(f"Accuracy:    {oof_accuracy:.4f}")
+print(f"AUROC:       {oof_auroc:.4f}")
+print(f"Sensitivity: {oof_sensitivity:.4f}")
+print(f"Specificity: {oof_specificity:.4f}")
+print(f"Precision:   {oof_precision:.4f}")
+print(f"F1 Score:    {oof_f1:.4f}")
+
+print(f"Brier Score: {brier_score:.4f}")
+
+
 
 
 
