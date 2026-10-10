@@ -615,5 +615,51 @@ plt.show()
 
 
 
+# ------------------------------------------------------------
+# 6.9.2 — Precision-Recall Curve
+# ------------------------------------------------------------
+
+precision_values, recall_values, pr_thresholds = (
+    precision_recall_curve(
+        y,
+        oof_probabilities_array
+    )
+)
+
+average_precision = average_precision_score(
+    y,
+    oof_probabilities_array
+)
+
+plt.figure(figsize=(7, 6))
+
+plt.plot(
+    recall_values,
+    precision_values,
+    label=f"Logistic Regression (AP = {average_precision:.3f})"
+)
+
+plt.axhline(
+    y=y.mean(),
+    linestyle="--",
+    label="Positive-class prevalence"
+)
+
+plt.xlabel("Recall (Sensitivity)")
+plt.ylabel("Precision")
+plt.title("Precision-Recall Curve - Logistic Regression")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+
+print(f"\nOOF AUROC: {oof_auroc:.4f}")
+print(f"Average Precision: {average_precision:.4f}")
+
+print("\nEvaluation curves generated successfully.")
+
+
+
 
 
