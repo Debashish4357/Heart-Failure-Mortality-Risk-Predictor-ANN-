@@ -562,3 +562,58 @@ print(f"Brier Score: {brier_score:.4f}")
 
 
 
+
+# ============================================================
+# STEP 6.9 — ROC AND PRECISION-RECALL CURVES
+# ============================================================
+
+import matplotlib.pyplot as plt
+
+from sklearn.metrics import (
+    roc_curve,
+    precision_recall_curve,
+    average_precision_score
+)
+
+
+print("\n" + "=" * 60)
+print("ROC AND PRECISION-RECALL CURVES")
+print("=" * 60)
+
+
+# ------------------------------------------------------------
+# 6.9.1 — ROC Curve
+# ------------------------------------------------------------
+
+fpr, tpr, roc_thresholds = roc_curve(
+    y,
+    oof_probabilities_array
+)
+
+plt.figure(figsize=(7, 6))
+
+plt.plot(
+    fpr,
+    tpr,
+    label=f"Logistic Regression (AUROC = {oof_auroc:.3f})"
+)
+
+plt.plot(
+    [0, 1],
+    [0, 1],
+    linestyle="--",
+    label="Random Classifier"
+)
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate (Sensitivity)")
+plt.title("ROC Curve - Logistic Regression")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+
+
+
+
