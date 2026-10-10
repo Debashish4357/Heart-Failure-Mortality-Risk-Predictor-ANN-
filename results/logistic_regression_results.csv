@@ -1,0 +1,2 @@
+Model,Evaluation,Threshold,Accuracy,AUROC,Sensitivity,Specificity,Precision,F1_Score,Brier_Score,Average_Precision
+Logistic Regression,Out-of-Fold,0.4,0.7391304347826086,0.7594930213464697,0.59375,0.8078817733990148,0.59375,0.59375,0.17779739149369542,0.6074614688491355
