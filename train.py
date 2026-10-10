@@ -663,3 +663,55 @@ print("\nEvaluation curves generated successfully.")
 
 
 
+
+
+
+# ============================================================
+# STEP 6.10 — SAVE LOGISTIC REGRESSION RESULTS
+# ============================================================
+
+import os
+
+print("\n" + "=" * 60)
+print("SAVING LOGISTIC REGRESSION RESULTS")
+print("=" * 60)
+
+
+# Store final evaluation metrics
+results = {
+    "Model": "Logistic Regression",
+    "Evaluation": "Out-of-Fold",
+    "Threshold": final_threshold,
+    "Accuracy": oof_accuracy,
+    "AUROC": oof_auroc,
+    "Sensitivity": oof_sensitivity,
+    "Specificity": oof_specificity,
+    "Precision": oof_precision,
+    "F1_Score": oof_f1,
+    "Brier_Score": brier_score,
+    "Average_Precision": average_precision
+}
+
+
+# Create results directory if it does not exist
+os.makedirs("results", exist_ok=True)
+
+
+# Save metrics to CSV
+results_df = pd.DataFrame([results])
+
+results_df.to_csv(
+    "results/logistic_regression_results.csv",
+    index=False
+)
+
+
+print("\nBaseline results saved successfully.")
+print("File: results/logistic_regression_results.csv")
+
+print("\nSaved metrics:")
+print(results_df.to_string(index=False))
+
+
+
+
