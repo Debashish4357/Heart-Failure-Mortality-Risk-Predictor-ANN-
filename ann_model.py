@@ -54,3 +54,12 @@ print("Output shape:", output_probability.shape)
 print("Output probability:", output_probability.item())
 
 print("\nForward pass completed successfully.")
+
+
+
+
+
+
+
+
+
