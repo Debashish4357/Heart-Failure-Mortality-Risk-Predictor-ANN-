@@ -12,24 +12,23 @@ from ann_model import HeartFailureANN
 
 
 # ============================================================
-# STEP 8.4 — ANN TRAINING LOOP
+# STEP 8.4 — ANN TRAINING WITH EARLY STOPPING
 # ============================================================
 
-# Reproducibility
+# 1. Reproducibility
 torch.manual_seed(42)
 
-# Load dataset
+# 2. Load dataset
 df = pd.read_csv(
     "data/heart_failure_clinical_records_dataset.csv"
 )
 
-# Separate features and target
-# Exclude leakage-prone 'time' column
+# 3. Separate features and target
+# Exclude 'time' to avoid leakage
 X = df.drop(columns=["DEATH_EVENT", "time"])
 y = df["DEATH_EVENT"]
 
-
-# Use the first CV fold for this training exercise
+# 4. Select the first fold for this practice run
 skf = StratifiedKFold(
     n_splits=5,
     shuffle=True,
@@ -44,15 +43,13 @@ X_val = X.iloc[val_index]
 y_train = y.iloc[train_index]
 y_val = y.iloc[val_index]
 
-
-# Scale using training data only
+# 5. Scale features using training data only
 scaler = StandardScaler()
 
 X_train_scaled = scaler.fit_transform(X_train)
 X_val_scaled = scaler.transform(X_val)
 
-
-# Convert to PyTorch tensors
+# 6. Convert data into PyTorch tensors
 X_train_tensor = torch.tensor(
     X_train_scaled,
     dtype=torch.float32
@@ -73,8 +70,7 @@ y_val_tensor = torch.tensor(
     dtype=torch.float32
 ).reshape(-1, 1)
 
-
-# Create batches
+# 7. Create training batches
 train_dataset = TensorDataset(
     X_train_tensor,
     y_train_tensor
@@ -86,11 +82,10 @@ train_loader = DataLoader(
     shuffle=True
 )
 
-
-# Create ANN
+# 8. Create the ANN model
 model = HeartFailureANN()
 
-# Loss and optimizer
+# 9. Define loss function and optimizer
 loss_function = nn.BCELoss()
 
 optimizer = torch.optim.Adam(
@@ -99,84 +94,27 @@ optimizer = torch.optim.Adam(
     weight_decay=0.0001
 )
 
-
-# Training settings
+# 10. Training settings
 epochs = 100
+patience = 10
+
+best_val_loss = float("inf")
+best_model_state = None
+epochs_without_improvement = 0
 
 print("=" * 60)
-print("ANN TRAINING")
+print("ANN TRAINING WITH EARLY STOPPING")
 print("=" * 60)
 
 print("Training samples:", len(X_train))
 print("Validation samples:", len(X_val))
 print("Input features:", X_train.shape[1])
-
-
-# Training loop
-for epoch in range(epochs):
-
-    model.train()
-    total_train_loss = 0.0
-
-    for batch_X, batch_y in train_loader:
-
-        # Clear previous gradients
-        optimizer.zero_grad()
-
-        # Forward pass
-        predictions = model(batch_X)
-
-        # Calculate loss
-        loss = loss_function(predictions, batch_y)
-
-        # Backpropagation
-        loss.backward()
-
-        # Update weights
-        optimizer.step()
-
-        total_train_loss += loss.item() * len(batch_X)
-
-    average_train_loss = (
-        total_train_loss / len(train_dataset)
-    )
-
-
-    # Validation: no weight updates
-    model.eval()
-
-    with torch.no_grad():
-        val_predictions = model(X_val_tensor)
-
-        val_loss = loss_function(
-            val_predictions,
-            y_val_tensor
-        ).item()
-
-
-    if (epoch + 1) % 10 == 0:
-        print(
-            f"Epoch [{epoch + 1}/{epochs}] | "
-            f"Train Loss: {average_train_loss:.4f} | "
-            f"Validation Loss: {val_loss:.4f}"
-        )
-
-
-print("\nANN training completed.")
-
-
-
+print("Maximum epochs:", epochs)
+print("Early stopping patience:", patience)
 
 # ============================================================
-# STEP 8.5 — TRAINING WITH EARLY STOPPING
+# STEP 8.5 — SINGLE TRAINING LOOP
 # ============================================================
-
-# Early stopping settings
-patience = 10
-best_val_loss = float("inf")
-best_model_state = None
-epochs_without_improvement = 0
-
 
 for epoch in range(epochs):
 
@@ -188,17 +126,26 @@ for epoch in range(epochs):
 
     for batch_X, batch_y in train_loader:
 
+        # Clear gradients from the previous batch
         optimizer.zero_grad()
 
+        # Forward pass
         predictions = model(batch_X)
+
+        # Calculate prediction error
         loss = loss_function(predictions, batch_y)
 
+        # Backpropagation
         loss.backward()
+
+        # Update model weights
         optimizer.step()
 
         total_train_loss += loss.item() * len(batch_X)
 
-    average_train_loss = total_train_loss / len(train_dataset)
+    average_train_loss = (
+        total_train_loss / len(train_dataset)
+    )
 
     # -------------------------
     # Validation phase
@@ -214,7 +161,7 @@ for epoch in range(epochs):
         ).item()
 
     # -------------------------
-    # Save best model weights
+    # Save the best model
     # -------------------------
     if val_loss < best_val_loss:
 
@@ -229,23 +176,25 @@ for epoch in range(epochs):
     else:
         epochs_without_improvement += 1
 
+    # Print progress every 10 epochs
     if (epoch + 1) % 10 == 0:
         print(
             f"Epoch [{epoch + 1}/{epochs}] | "
             f"Train Loss: {average_train_loss:.4f} | "
             f"Validation Loss: {val_loss:.4f} | "
-            f"Patience: {epochs_without_improvement}/{patience}"
+            f"Patience: "
+            f"{epochs_without_improvement}/{patience}"
         )
 
-    # -------------------------
-    # Early stopping condition
-    # -------------------------
+    # Stop if validation loss does not improve
     if epochs_without_improvement >= patience:
         print(f"\nEarly stopping at epoch {epoch + 1}.")
         break
 
+# ============================================================
+# STEP 8.6 — RESTORE THE BEST MODEL
+# ============================================================
 
-# Restore the best model weights
 if best_model_state is not None:
     model.load_state_dict(best_model_state)
 
@@ -255,6 +204,85 @@ print("Best model weights restored.")
 
 
 
+
+# ============================================================
+# STEP 8.7 — ANN MODEL EVALUATION
+# ============================================================
+
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    classification_report
+)
+
+# Put model in evaluation mode
+model.eval()
+
+# Generate validation probabilities
+with torch.no_grad():
+    val_probabilities = model(X_val_tensor).cpu().numpy().ravel()
+
+# Convert probabilities into class predictions
+threshold = 0.5
+val_predictions = (val_probabilities >= threshold).astype(int)
+
+# Calculate evaluation metrics
+y_true = y_val.to_numpy()
+
+accuracy = accuracy_score(y_true, val_predictions)
+precision = precision_score(
+    y_true, val_predictions, zero_division=0
+)
+sensitivity = recall_score(
+    y_true, val_predictions, zero_division=0
+)
+f1 = f1_score(
+    y_true, val_predictions, zero_division=0
+)
+
+# Confusion matrix: [[TN, FP], [FN, TP]]
+tn, fp, fn, tp = confusion_matrix(
+    y_true, val_predictions, labels=[0, 1]
+).ravel()
+
+specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+
+# AUROC uses probabilities, not class predictions
+if len(set(y_true)) == 2:
+    auroc = roc_auc_score(y_true, val_probabilities)
+else:
+    auroc = float("nan")
+
+# Display results
+print("\n" + "=" * 60)
+print("ANN VALIDATION RESULTS")
+print("=" * 60)
+
+print(f"Accuracy:     {accuracy:.4f}")
+print(f"Precision:    {precision:.4f}")
+print(f"Sensitivity:  {sensitivity:.4f}")
+print(f"Specificity:  {specificity:.4f}")
+print(f"F1-score:     {f1:.4f}")
+print(f"AUROC:        {auroc:.4f}")
+
+print("\nConfusion Matrix:")
+print(f"True Negatives (TN):  {tn}")
+print(f"False Positives (FP): {fp}")
+print(f"False Negatives (FN): {fn}")
+print(f"True Positives (TP):  {tp}")
+
+print("\nClassification Report:")
+print(classification_report(
+    y_true,
+    val_predictions,
+    labels=[0, 1],
+    target_names=["No Death Event", "Death Event"],
+    zero_division=0
+))
 
 
 
