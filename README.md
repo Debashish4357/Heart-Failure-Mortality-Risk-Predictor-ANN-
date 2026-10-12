@@ -1065,8 +1065,6 @@ FastAPI
 React
         +
 PostgreSQL
-        +
-Docker
 ```
 
 The final system is intended to provide a validated, probability-first mortality-risk estimate through a secure full-stack clinical decision-support application.
