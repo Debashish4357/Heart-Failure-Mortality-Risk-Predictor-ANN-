@@ -167,4 +167,94 @@ print("\nANN training completed.")
 
 
 
+# ============================================================
+# STEP 8.5 — TRAINING WITH EARLY STOPPING
+# ============================================================
+
+# Early stopping settings
+patience = 10
+best_val_loss = float("inf")
+best_model_state = None
+epochs_without_improvement = 0
+
+
+for epoch in range(epochs):
+
+    # -------------------------
+    # Training phase
+    # -------------------------
+    model.train()
+    total_train_loss = 0.0
+
+    for batch_X, batch_y in train_loader:
+
+        optimizer.zero_grad()
+
+        predictions = model(batch_X)
+        loss = loss_function(predictions, batch_y)
+
+        loss.backward()
+        optimizer.step()
+
+        total_train_loss += loss.item() * len(batch_X)
+
+    average_train_loss = total_train_loss / len(train_dataset)
+
+    # -------------------------
+    # Validation phase
+    # -------------------------
+    model.eval()
+
+    with torch.no_grad():
+        val_predictions = model(X_val_tensor)
+
+        val_loss = loss_function(
+            val_predictions,
+            y_val_tensor
+        ).item()
+
+    # -------------------------
+    # Save best model weights
+    # -------------------------
+    if val_loss < best_val_loss:
+
+        best_val_loss = val_loss
+
+        best_model_state = copy.deepcopy(
+            model.state_dict()
+        )
+
+        epochs_without_improvement = 0
+
+    else:
+        epochs_without_improvement += 1
+
+    if (epoch + 1) % 10 == 0:
+        print(
+            f"Epoch [{epoch + 1}/{epochs}] | "
+            f"Train Loss: {average_train_loss:.4f} | "
+            f"Validation Loss: {val_loss:.4f} | "
+            f"Patience: {epochs_without_improvement}/{patience}"
+        )
+
+    # -------------------------
+    # Early stopping condition
+    # -------------------------
+    if epochs_without_improvement >= patience:
+        print(f"\nEarly stopping at epoch {epoch + 1}.")
+        break
+
+
+# Restore the best model weights
+if best_model_state is not None:
+    model.load_state_dict(best_model_state)
+
+print("\nANN training completed.")
+print(f"Best validation loss: {best_val_loss:.4f}")
+print("Best model weights restored.")
+
+
+
+
+
 
