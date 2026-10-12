@@ -19,3 +19,20 @@ loss_2 = loss_function(prediction_2, actual_2)
 
 print("Loss for good prediction:", loss_1.item())
 print("Loss for poor prediction:", loss_2.item())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
