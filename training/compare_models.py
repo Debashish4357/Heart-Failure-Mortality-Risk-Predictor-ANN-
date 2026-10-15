@@ -1,14 +1,38 @@
 
 import os
+import sys
 import pandas as pd
 
-# Load the saved 5-fold summary files
-ann = pd.read_csv("results/ann_5fold_summary.csv")
-logistic = pd.read_csv(
-    "results/logistic_regression_5fold_summary.csv"
+# ============================================================
+# PROJECT PATHS
+# ============================================================
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
 )
 
-# Keep the metric names and their mean scores
+sys.path.insert(0, PROJECT_ROOT)
+
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
+
+# ============================================================
+# LOAD 5-FOLD SUMMARY FILES
+# ============================================================
+
+ann_path = os.path.join(
+    RESULTS_DIR,
+    "ann_5fold_summary.csv"
+)
+
+logistic_path = os.path.join(
+    RESULTS_DIR,
+    "logistic_regression_5fold_summary.csv"
+)
+
+ann = pd.read_csv(ann_path)
+logistic = pd.read_csv(logistic_path)
+
+# Keep metric names and mean scores
 ann_comparison = ann[["Metric", "Mean"]].rename(
     columns={"Mean": "ANN_Mean"}
 )
@@ -25,14 +49,28 @@ comparison = pd.merge(
     how="inner"
 )
 
-# Save the comparison
-os.makedirs("results", exist_ok=True)
+# ============================================================
+# SAVE MODEL COMPARISON
+# ============================================================
 
-output_path = "results/model_comparison.csv"
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+output_path = os.path.join(
+    RESULTS_DIR,
+    "model_comparison.csv"
+)
+
 comparison.to_csv(output_path, index=False)
 
 print("=" * 55)
 print("MODEL COMPARISON")
 print("=" * 55)
-print(comparison.to_string(index=False, float_format="%.4f"))
+
+print(
+    comparison.to_string(
+        index=False,
+        float_format="%.4f"
+    )
+)
+
 print("\nSaved to:", output_path)

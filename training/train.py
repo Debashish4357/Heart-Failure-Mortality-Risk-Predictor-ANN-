@@ -1,227 +1,245 @@
+
+import os
+import sys
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     roc_auc_score,
-    confusion_matrix
+    confusion_matrix,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_curve,
+    precision_recall_curve,
+    average_precision_score,
+    brier_score_loss
+)
+from sklearn.calibration import calibration_curve
+
+# ============================================================
+# PROJECT PATHS AND REUSABLE MODEL
+# ============================================================
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
 )
 
+sys.path.insert(0, PROJECT_ROOT)
 
-# Load dataset
-df = pd.read_csv("data/heart_failure_clinical_records_dataset.csv")
+from models.logistic_model import create_logistic_model
 
+DATA_PATH = os.path.join(
+    PROJECT_ROOT,
+    "data",
+    "heart_failure_clinical_records_dataset.csv"
+)
 
-# Separate features and target
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+SEED = 42
+N_SPLITS = 5
+
+# ============================================================
+# STEP 1 — LOAD AND PREPARE DATA
+# ============================================================
+
+df = pd.read_csv(DATA_PATH)
+
+# Exclude target and leakage-prone 'time' feature
 X = df.drop(columns=["DEATH_EVENT", "time"])
 y = df["DEATH_EVENT"]
-
-
-# Stratified 5-Fold Cross Validation
-skf = StratifiedKFold(
-    n_splits=5,
-    shuffle=True,
-    random_state=42
-)
-
 
 print("Feature shape:", X.shape)
 print("Target shape:", y.shape)
 
-print("\nLogistic Regression - 5-Fold Cross Validation")
+# Use reproducible stratified folds
+skf = StratifiedKFold(
+    n_splits=N_SPLITS,
+    shuffle=True,
+    random_state=SEED
+)
 
+# ============================================================
+# STEP 2 — LOGISTIC REGRESSION 5-FOLD CROSS-VALIDATION
+# ============================================================
 
-# Store results
-auroc_scores = []
-accuracy_scores = []
-sensitivity_scores = []
-specificity_scores = []
+print("\n" + "=" * 60)
+print("LOGISTIC REGRESSION — 5-FOLD CROSS-VALIDATION")
+print("=" * 60)
 
+fold_results = []
 
-for fold, (train_index, val_index) in enumerate(skf.split(X, y), start=1):
-
+for fold, (train_index, val_index) in enumerate(
+    skf.split(X, y), start=1
+):
     X_train = X.iloc[train_index]
     X_val = X.iloc[val_index]
 
     y_train = y.iloc[train_index]
     y_val = y.iloc[val_index]
 
+    # Create a fresh scaler + Logistic Regression pipeline
+    model = create_logistic_model()
 
-    # Scale features
-    scaler = StandardScaler()
-
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
-
-
-    # Create Logistic Regression model
-    model = LogisticRegression(
-        max_iter=1000,
-        random_state=42
-    )
-
-
-    # Train model
-    model.fit(X_train_scaled, y_train)
-
+    # Fit preprocessing and model on training data only
+    model.fit(X_train, y_train)
 
     # Predictions
-    y_pred = model.predict(X_val_scaled)
-    y_prob = model.predict_proba(X_val_scaled)[:, 1]
-
+    y_pred = model.predict(X_val)
+    y_prob = model.predict_proba(X_val)[:, 1]
 
     # Metrics
     accuracy = accuracy_score(y_val, y_pred)
     auroc = roc_auc_score(y_val, y_prob)
 
+    precision = precision_score(
+        y_val, y_pred, zero_division=0
+    )
+
+    sensitivity = recall_score(
+        y_val, y_pred, zero_division=0
+    )
+
+    f1 = f1_score(
+        y_val, y_pred, zero_division=0
+    )
+
     tn, fp, fn, tp = confusion_matrix(
-        y_val,
-        y_pred
+        y_val, y_pred, labels=[0, 1]
     ).ravel()
 
-    sensitivity = tp / (tp + fn)
-    specificity = tn / (tn + fp)
+    specificity = (
+        tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    )
 
-
-    # Store results
-    accuracy_scores.append(accuracy)
-    auroc_scores.append(auroc)
-    sensitivity_scores.append(sensitivity)
-    specificity_scores.append(specificity)
-
+    fold_results.append({
+        "Fold": fold,
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Sensitivity": sensitivity,
+        "Specificity": specificity,
+        "F1_Score": f1,
+        "AUROC": auroc,
+        "TN": tn,
+        "FP": fp,
+        "FN": fn,
+        "TP": tp
+    })
 
     print(f"\nFold {fold}")
     print(f"Accuracy: {accuracy:.4f}")
     print(f"AUROC: {auroc:.4f}")
     print(f"Sensitivity: {sensitivity:.4f}")
     print(f"Specificity: {specificity:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"F1-score: {f1:.4f}")
     print(f"TP: {tp}, TN: {tn}, FP: {fp}, FN: {fn}")
 
+# Summarize fold results
+fold_results_df = pd.DataFrame(fold_results)
 
-# Average results
+metrics = [
+    "Accuracy",
+    "Precision",
+    "Sensitivity",
+    "Specificity",
+    "F1_Score",
+    "AUROC"
+]
+
 print("\n===== Logistic Regression Results =====")
 
-print(f"Mean Accuracy: {sum(accuracy_scores) / len(accuracy_scores):.4f}")
-print(f"Mean AUROC: {sum(auroc_scores) / len(auroc_scores):.4f}")
-print(f"Mean Sensitivity: {sum(sensitivity_scores) / len(sensitivity_scores):.4f}")
-print(f"Mean Specificity: {sum(specificity_scores) / len(specificity_scores):.4f}")
+for metric in metrics:
+    print(
+        f"Mean {metric}: "
+        f"{fold_results_df[metric].mean():.4f}"
+    )
 
-
+fold_results_df.to_csv(
+    os.path.join(
+        RESULTS_DIR,
+        "train_logistic_5fold_results.csv"
+    ),
+    index=False
+)
 
 # ============================================================
-# OUT-OF-FOLD PREDICTIONS
+# STEP 3 — OUT-OF-FOLD (OOF) PREDICTIONS
 # ============================================================
 
 print("\n" + "=" * 60)
 print("OUT-OF-FOLD PREDICTIONS")
 print("=" * 60)
 
+# Each patient receives a probability from a model that
+# was not trained on that patient's fold.
+oof_probabilities = np.full(len(X), np.nan)
 
-# Store one probability prediction for every patient
-oof_probabilities = [None] * len(X)
-
-
-# 5-Fold Cross Validation
 for fold, (train_index, val_index) in enumerate(
-    skf.split(X, y),
-    start=1
+    skf.split(X, y), start=1
 ):
-
     print(f"\nProcessing Fold {fold}...")
 
-    # Split data
     X_train = X.iloc[train_index]
     X_val = X.iloc[val_index]
-
     y_train = y.iloc[train_index]
 
-    # Scale using training data only
-    scaler = StandardScaler()
+    model = create_logistic_model()
+    model.fit(X_train, y_train)
 
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
+    y_prob = model.predict_proba(X_val)[:, 1]
 
-    # Create Logistic Regression model
-    model = LogisticRegression(
-        max_iter=1000,
-        random_state=42
-    )
+    # Store probabilities at original patient positions
+    oof_probabilities[val_index] = y_prob
 
-    # Train model
-    model.fit(
-        X_train_scaled,
-        y_train
-    )
+    print(f"Stored {len(y_prob)} validation predictions")
 
-    # Generate probability predictions
-    y_prob = model.predict_proba(
-        X_val_scaled
-    )[:, 1]
+oof_probabilities = pd.Series(oof_probabilities)
 
-    # Store predictions at their original patient positions
-    for index, probability in zip(
-        val_index,
-        y_prob
-    ):
-        oof_probabilities[index] = probability
-
-    print(
-        f"Stored {len(y_prob)} validation predictions"
-    )
-
-
-# Convert to pandas Series
-oof_probabilities = pd.Series(
-    oof_probabilities
-)
-
-
-# Verify results
 print("\nOOF prediction count:", len(oof_probabilities))
 print(
     "Missing OOF predictions:",
     oof_probabilities.isna().sum()
 )
-
-print(
-    "Minimum probability:",
-    oof_probabilities.min()
-)
-
-print(
-    "Maximum probability:",
-    oof_probabilities.max()
-)
+print("Minimum probability:", oof_probabilities.min())
+print("Maximum probability:", oof_probabilities.max())
 
 print("\nFirst 10 OOF probabilities:")
 print(oof_probabilities.head(10))
 
+# Save OOF predictions
+oof_probabilities_array = oof_probabilities.to_numpy()
 
+oof_predictions_df = pd.DataFrame({
+    "Actual_DEATH_EVENT": y.to_numpy(),
+    "OOF_Probability": oof_probabilities_array
+})
+
+oof_predictions_df.to_csv(
+    os.path.join(
+        RESULTS_DIR,
+        "logistic_oof_predictions.csv"
+    ),
+    index=False
+)
 
 # ============================================================
-# THRESHOLD ANALYSIS
+# STEP 4 — THRESHOLD ANALYSIS
 # ============================================================
 
 print("\n" + "=" * 60)
 print("THRESHOLD ANALYSIS")
 print("=" * 60)
 
-
-# Thresholds to evaluate
 thresholds = [
-    0.30,
-    0.35,
-    0.40,
-    0.45,
-    0.50,
-    0.55,
-    0.60,
-    0.65,
-    0.70
+    0.30, 0.35, 0.40, 0.45, 0.50,
+    0.55, 0.60, 0.65, 0.70
 ]
-
 
 print("\nThreshold Results:")
 print(
@@ -231,30 +249,24 @@ print(
     f"{'Specificity':<15}"
 )
 
-
-# Evaluate each threshold
 for threshold in thresholds:
-
-    # Convert probabilities into class predictions
     y_pred_threshold = (
-        oof_probabilities >= threshold
+        oof_probabilities_array >= threshold
     ).astype(int)
 
-    # Calculate confusion matrix
     tn, fp, fn, tp = confusion_matrix(
-        y,
-        y_pred_threshold
+        y, y_pred_threshold, labels=[0, 1]
     ).ravel()
 
-    # Calculate metrics
-    accuracy = accuracy_score(
-        y,
-        y_pred_threshold
+    accuracy = accuracy_score(y, y_pred_threshold)
+
+    sensitivity = (
+        tp / (tp + fn) if (tp + fn) > 0 else 0.0
     )
 
-    sensitivity = tp / (tp + fn)
-
-    specificity = tn / (tn + fp)
+    specificity = (
+        tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    )
 
     print(
         f"{threshold:<12.2f}"
@@ -263,40 +275,34 @@ for threshold in thresholds:
         f"{specificity:<15.4f}"
     )
 
-
-    
-
-    # ============================================================
-# VALIDATION-DERIVED THRESHOLD
-# Using Youden's J Statistic
+# ============================================================
+# STEP 5 — VALIDATION-DERIVED THRESHOLD
+# Youden's J Statistic
 # ============================================================
 
 print("\n" + "=" * 60)
 print("VALIDATION-DERIVED THRESHOLD")
 print("=" * 60)
 
-
 threshold_results = []
 
-
 for threshold in thresholds:
-
-    # Convert probabilities into predictions
     y_pred_threshold = (
-        oof_probabilities >= threshold
+        oof_probabilities_array >= threshold
     ).astype(int)
 
-    # Confusion matrix
     tn, fp, fn, tp = confusion_matrix(
-        y,
-        y_pred_threshold
+        y, y_pred_threshold, labels=[0, 1]
     ).ravel()
 
-    # Metrics
-    sensitivity = tp / (tp + fn)
-    specificity = tn / (tn + fp)
+    sensitivity = (
+        tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    )
 
-    # Youden's J
+    specificity = (
+        tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    )
+
     youden_j = sensitivity + specificity - 1
 
     threshold_results.append({
@@ -306,18 +312,9 @@ for threshold in thresholds:
         "youden_j": youden_j
     })
 
-
-# Find threshold with highest Youden's J
-best_threshold_result = max(
-    threshold_results,
-    key=lambda x: x["youden_j"]
-)
-
-
 print("\nThreshold Evaluation:")
 
 for result in threshold_results:
-
     print(
         f"Threshold: {result['threshold']:.2f} | "
         f"Sensitivity: {result['sensitivity']:.4f} | "
@@ -325,60 +322,51 @@ for result in threshold_results:
         f"Youden J: {result['youden_j']:.4f}"
     )
 
-
-print("\nSelected validation-derived threshold:")
-
-print(
-    f"Threshold: "
-    f"{best_threshold_result['threshold']:.2f}"
+best_threshold_result = max(
+    threshold_results,
+    key=lambda result: result["youden_j"]
 )
 
+final_threshold = best_threshold_result["threshold"]
+
+print("\nSelected threshold:", f"{final_threshold:.2f}")
 print(
-    f"Sensitivity: "
+    "Sensitivity:",
     f"{best_threshold_result['sensitivity']:.4f}"
 )
-
 print(
-    f"Specificity: "
+    "Specificity:",
     f"{best_threshold_result['specificity']:.4f}"
 )
-
 print(
-    f"Youden J: "
+    "Youden J:",
     f"{best_threshold_result['youden_j']:.4f}"
 )
 
-
-
+# Save threshold analysis
+pd.DataFrame(threshold_results).to_csv(
+    os.path.join(
+        RESULTS_DIR,
+        "logistic_threshold_analysis.csv"
+    ),
+    index=False
+)
 
 # ============================================================
-# CALIBRATION
+# STEP 6 — CALIBRATION ANALYSIS
 # ============================================================
-
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import brier_score_loss
-import matplotlib.pyplot as plt
-
 
 print("\n" + "=" * 60)
 print("CALIBRATION ANALYSIS")
 print("=" * 60)
 
+brier_score = brier_score_loss(
+    y, oof_probabilities_array
+)
 
-# ============================================================
-# Prepare OOF Probabilities
-# ============================================================
-
-# Convert OOF predictions to NumPy array
-oof_probabilities_array = oof_probabilities.to_numpy()
-
-print("\nOOF probabilities prepared.")
-print("Number of predictions:", len(oof_probabilities_array))
-
-
-# ============================================================
-# Calibration Curve
-# ============================================================
+oof_auroc = roc_auc_score(
+    y, oof_probabilities_array
+)
 
 prob_true, prob_pred = calibration_curve(
     y,
@@ -387,20 +375,23 @@ prob_true, prob_pred = calibration_curve(
     strategy="uniform"
 )
 
+calibration_df = pd.DataFrame({
+    "Mean_Predicted_Probability": prob_pred,
+    "Observed_Positive_Fraction": prob_true
+})
 
 print("\nCalibration values:")
+print(calibration_df.to_string(index=False))
 
-for predicted, actual in zip(
-    prob_pred,
-    prob_true
-):
-    print(
-        f"Predicted probability: {predicted:.4f} | "
-        f"Observed frequency: {actual:.4f}"
-    )
+calibration_df.to_csv(
+    os.path.join(
+        RESULTS_DIR,
+        "train_logistic_calibration_curve.csv"
+    ),
+    index=False
+)
 
-
-# Plot calibration curve
+# Calibration plot
 plt.figure(figsize=(7, 6))
 
 plt.plot(
@@ -421,125 +412,56 @@ plt.xlabel("Mean Predicted Probability")
 plt.ylabel("Observed Frequency")
 plt.title("Calibration Curve")
 plt.legend()
-plt.grid()
-
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.show()
 
-
-
-# ============================================================
-#  BRIER SCORE
-# ============================================================
-
-brier_score = brier_score_loss(
-    y,
-    oof_probabilities_array
+plt.savefig(
+    os.path.join(
+        RESULTS_DIR,
+        "train_logistic_calibration_curve.png"
+    ),
+    dpi=150
 )
+plt.close()
 
-print("\nBrier Score:", round(brier_score, 4))
-
-
-
-
+print("\nBrier Score:", f"{brier_score:.4f}")
+print("OOF AUROC:", f"{oof_auroc:.4f}")
 
 # ============================================================
-# STEP 6 — FINAL ML EVALUATION
+# STEP 7 — FINAL OOF EVALUATION
 # ============================================================
-
-from sklearn.metrics import (
-    accuracy_score,
-    roc_auc_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    confusion_matrix
-)
-
 
 print("\n" + "=" * 60)
 print("FINAL LOGISTIC REGRESSION OOF EVALUATION")
 print("=" * 60)
 
-
-# ============================================================
-# STEP 6.1 — OOF Class Predictions
-# ============================================================
-
-# Use the validation-derived threshold selected earlier
-final_threshold = best_threshold_result["threshold"]
-
 oof_predictions = (
     oof_probabilities_array >= final_threshold
 ).astype(int)
 
-
-# ============================================================
-# STEP 6.2 — Accuracy
-# ============================================================
-
-oof_accuracy = accuracy_score(
-    y,
-    oof_predictions
-)
-
-
-# ============================================================
-# STEP 6.3 — AUROC
-# ============================================================
-
-oof_auroc = roc_auc_score(
-    y,
-    oof_probabilities_array
-)
-
-
-# ============================================================
-# STEP 6.4 — Confusion Matrix
-# ============================================================
+oof_accuracy = accuracy_score(y, oof_predictions)
 
 tn, fp, fn, tp = confusion_matrix(
-    y,
-    oof_predictions
+    y, oof_predictions, labels=[0, 1]
 ).ravel()
 
+oof_sensitivity = (
+    tp / (tp + fn) if (tp + fn) > 0 else 0.0
+)
 
-# ============================================================
-# STEP 6.5 — Sensitivity and Specificity
-# ============================================================
-
-oof_sensitivity = tp / (tp + fn)
-
-oof_specificity = tn / (tn + fp)
-
-
-# ============================================================
-# STEP 6.6 — Precision
-# ============================================================
+oof_specificity = (
+    tn / (tn + fp) if (tn + fp) > 0 else 0.0
+)
 
 oof_precision = precision_score(
-    y,
-    oof_predictions,
-    zero_division=0
+    y, oof_predictions, zero_division=0
 )
-
-
-# ============================================================
-# STEP 6.7 — F1 Score
-# ============================================================
 
 oof_f1 = f1_score(
-    y,
-    oof_predictions,
-    zero_division=0
+    y, oof_predictions, zero_division=0
 )
 
-
-# ============================================================
-# Final Results
-# ============================================================
-
-print("\nSelected Threshold:", round(final_threshold, 4))
+print("\nSelected Threshold:", f"{final_threshold:.2f}")
 
 print("\nConfusion Matrix:")
 print(f"TN: {tn}")
@@ -554,40 +476,19 @@ print(f"Sensitivity: {oof_sensitivity:.4f}")
 print(f"Specificity: {oof_specificity:.4f}")
 print(f"Precision:   {oof_precision:.4f}")
 print(f"F1 Score:    {oof_f1:.4f}")
-
 print(f"Brier Score: {brier_score:.4f}")
 
-
-
-
-
-
-
 # ============================================================
-# STEP 6.9 — ROC AND PRECISION-RECALL CURVES
+# STEP 8 — ROC AND PRECISION-RECALL CURVES
 # ============================================================
-
-import matplotlib.pyplot as plt
-
-from sklearn.metrics import (
-    roc_curve,
-    precision_recall_curve,
-    average_precision_score
-)
-
 
 print("\n" + "=" * 60)
 print("ROC AND PRECISION-RECALL CURVES")
 print("=" * 60)
 
-
-# ------------------------------------------------------------
-# 6.9.1 — ROC Curve
-# ------------------------------------------------------------
-
+# ROC curve
 fpr, tpr, roc_thresholds = roc_curve(
-    y,
-    oof_probabilities_array
+    y, oof_probabilities_array
 )
 
 plt.figure(figsize=(7, 6))
@@ -609,26 +510,24 @@ plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate (Sensitivity)")
 plt.title("ROC Curve - Logistic Regression")
 plt.legend()
-plt.grid()
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.show()
 
+plt.savefig(
+    os.path.join(RESULTS_DIR, "logistic_roc_curve.png"),
+    dpi=150
+)
+plt.close()
 
-
-# ------------------------------------------------------------
-# 6.9.2 — Precision-Recall Curve
-# ------------------------------------------------------------
-
+# Precision-recall curve
 precision_values, recall_values, pr_thresholds = (
     precision_recall_curve(
-        y,
-        oof_probabilities_array
+        y, oof_probabilities_array
     )
 )
 
 average_precision = average_precision_score(
-    y,
-    oof_probabilities_array
+    y, oof_probabilities_array
 )
 
 plt.figure(figsize=(7, 6))
@@ -649,35 +548,30 @@ plt.xlabel("Recall (Sensitivity)")
 plt.ylabel("Precision")
 plt.title("Precision-Recall Curve - Logistic Regression")
 plt.legend()
-plt.grid()
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.show()
 
+plt.savefig(
+    os.path.join(
+        RESULTS_DIR,
+        "logistic_precision_recall_curve.png"
+    ),
+    dpi=150
+)
+plt.close()
 
 print(f"\nOOF AUROC: {oof_auroc:.4f}")
 print(f"Average Precision: {average_precision:.4f}")
-
-print("\nEvaluation curves generated successfully.")
-
-
-
-
-
-
-
+print("Evaluation curves saved successfully.")
 
 # ============================================================
-# STEP 6.10 — SAVE LOGISTIC REGRESSION RESULTS
+# STEP 9 — SAVE FINAL EVALUATION METRICS
 # ============================================================
-
-import os
 
 print("\n" + "=" * 60)
 print("SAVING LOGISTIC REGRESSION RESULTS")
 print("=" * 60)
 
-
-# Store final evaluation metrics
 results = {
     "Model": "Logistic Regression",
     "Evaluation": "Out-of-Fold",
@@ -692,30 +586,20 @@ results = {
     "Average_Precision": average_precision
 }
 
-
-# Create results directory if it does not exist
-os.makedirs("results", exist_ok=True)
-
-
-# Save metrics to CSV
 results_df = pd.DataFrame([results])
 
-results_df.to_csv(
-    "results/logistic_regression_results.csv",
-    index=False
+results_path = os.path.join(
+    RESULTS_DIR,
+    "logistic_regression_results.csv"
 )
 
+results_df.to_csv(results_path, index=False)
 
 print("\nBaseline results saved successfully.")
-print("File: results/logistic_regression_results.csv")
-
+print("File:", results_path)
 print("\nSaved metrics:")
 print(results_df.to_string(index=False))
 
-
-
-
-
-
+print("\nAll training and evaluation steps completed.")
 
 

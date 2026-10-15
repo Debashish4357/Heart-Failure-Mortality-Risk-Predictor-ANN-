@@ -1,15 +1,33 @@
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import StratifiedKFold
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss, roc_auc_score
+
+# ============================================================
+# PROJECT PATHS AND IMPORTS
+# ============================================================
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+sys.path.insert(0, PROJECT_ROOT)
+
+from models.logistic_model import create_logistic_model
+
+DATA_PATH = os.path.join(
+    PROJECT_ROOT,
+    "data",
+    "heart_failure_clinical_records_dataset.csv"
+)
+
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
 
 # ============================================================
 # STEP 8.12 — LOGISTIC REGRESSION CALIBRATION ANALYSIS
@@ -19,9 +37,7 @@ SEED = 42
 N_BINS = 5
 
 # 1. Load dataset
-df = pd.read_csv(
-    "data/heart_failure_clinical_records_dataset.csv"
-)
+df = pd.read_csv(DATA_PATH)
 
 # Exclude target and leakage-prone 'time'
 X = df.drop(columns=["DEATH_EVENT", "time"])
@@ -39,18 +55,14 @@ oof_probabilities = np.zeros(len(X))
 for fold, (train_idx, test_idx) in enumerate(
     cv.split(X, y), start=1
 ):
-    model = make_pipeline(
-        StandardScaler(),
-        LogisticRegression(
-            max_iter=2000,
-            random_state=SEED
-        )
-    )
+    # Create a fresh pipeline for each fold
+    model = create_logistic_model()
 
     X_train = X.iloc[train_idx]
     y_train = y.iloc[train_idx]
     X_test = X.iloc[test_idx]
 
+    # Fit scaler and classifier using training fold only
     model.fit(X_train, y_train)
 
     oof_probabilities[test_idx] = (
@@ -72,7 +84,7 @@ fraction_positive, mean_predicted = calibration_curve(
 )
 
 # 5. Save calibration data
-os.makedirs("results", exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 calibration_df = pd.DataFrame({
     "Mean_Predicted_Probability": mean_predicted,
@@ -80,7 +92,10 @@ calibration_df = pd.DataFrame({
 })
 
 calibration_df.to_csv(
-    "results/logistic_calibration_curve.csv",
+    os.path.join(
+        RESULTS_DIR,
+        "logistic_calibration_curve.csv"
+    ),
     index=False
 )
 
@@ -91,7 +106,10 @@ prediction_df = pd.DataFrame({
 })
 
 prediction_df.to_csv(
-    "results/logistic_oof_predictions.csv",
+    os.path.join(
+        RESULTS_DIR,
+        "logistic_oof_predictions.csv"
+    ),
     index=False
 )
 
@@ -119,7 +137,10 @@ plt.grid(True, alpha=0.3)
 plt.tight_layout()
 
 plt.savefig(
-    "results/logistic_calibration_curve.png",
+    os.path.join(
+        RESULTS_DIR,
+        "logistic_calibration_curve.png"
+    ),
     dpi=150
 )
 
@@ -137,13 +158,7 @@ print("\nCalibration curve data:")
 print(calibration_df.to_string(index=False))
 
 print("\nSaved files:")
-print("results/logistic_calibration_curve.csv")
-print("results/logistic_calibration_curve.png")
-print("results/logistic_oof_predictions.csv")
-
-
-
-
-
-
+print(os.path.join(RESULTS_DIR, "logistic_calibration_curve.csv"))
+print(os.path.join(RESULTS_DIR, "logistic_calibration_curve.png"))
+print(os.path.join(RESULTS_DIR, "logistic_oof_predictions.csv"))
 
