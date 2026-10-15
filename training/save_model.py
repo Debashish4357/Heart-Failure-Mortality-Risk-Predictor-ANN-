@@ -46,3 +46,9 @@ print("Training samples:", len(X))
 print("Input features:", len(X.columns))
 print("Model: models/logistic_regression_pipeline.joblib")
 print("Features: models/feature_names.joblib")
+
+
+
+
+
+
