@@ -1,11 +1,10 @@
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import StratifiedKFold, train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -16,22 +15,40 @@ from sklearn.metrics import (
 )
 
 # ============================================================
+# PROJECT PATHS AND IMPORTS
+# ============================================================
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+sys.path.insert(0, PROJECT_ROOT)
+
+from models.logistic_model import create_logistic_model
+
+DATA_PATH = os.path.join(
+    PROJECT_ROOT,
+    "data",
+    "heart_failure_clinical_records_dataset.csv"
+)
+
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
+
+# ============================================================
 # STEP 8.9 — LOGISTIC REGRESSION 5-FOLD CROSS-VALIDATION
 # ============================================================
 
 SEED = 42
 
 # Load dataset
-df = pd.read_csv(
-    "data/heart_failure_clinical_records_dataset.csv"
-)
+df = pd.read_csv(DATA_PATH)
 
 # Prepare features and target
 X = df.drop(columns=["DEATH_EVENT", "time"])
 y = df["DEATH_EVENT"]
 
 # Create results folder
-os.makedirs("results", exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # Use the same outer folds as the ANN
 outer_cv = StratifiedKFold(
@@ -69,24 +86,16 @@ for fold, (outer_train_idx, test_idx) in enumerate(
     X_train = X_outer_train.iloc[inner_train_idx]
     y_train = y_outer_train.iloc[inner_train_idx]
 
-    # Fit scaler on training data only
-    scaler = StandardScaler()
+    # Create the reusable pipeline.
+    # StandardScaler is included inside this pipeline.
+    model = create_logistic_model()
 
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    # Create Logistic Regression model
-    model = LogisticRegression(
-        max_iter=2000,
-        random_state=SEED
-    )
-
-    # Train model
-    model.fit(X_train_scaled, y_train)
+    # Train using only the training split
+    model.fit(X_train, y_train)
 
     # Generate predictions and probabilities
-    predictions = model.predict(X_test_scaled)
-    probabilities = model.predict_proba(X_test_scaled)[:, 1]
+    predictions = model.predict(X_test)
+    probabilities = model.predict_proba(X_test)[:, 1]
 
     y_true = y_test.to_numpy()
 
@@ -115,6 +124,7 @@ for fold, (outer_train_idx, test_idx) in enumerate(
 
     auroc = roc_auc_score(y_true, probabilities)
 
+    # Store fold results
     fold_results.append({
         "Fold": fold,
         "Accuracy": accuracy,
@@ -137,7 +147,10 @@ for fold, (outer_train_idx, test_idx) in enumerate(
     print(f"Specificity: {specificity:.4f}")
     print(f"F1-score: {f1:.4f}")
     print(f"AUROC: {auroc:.4f}")
-    print(f"Confusion matrix: TN={tn}, FP={fp}, FN={fn}, TP={tp}")
+    print(
+        f"Confusion matrix: TN={tn}, FP={fp}, "
+        f"FN={fn}, TP={tp}"
+    )
 
 
 # ============================================================
@@ -146,10 +159,12 @@ for fold, (outer_train_idx, test_idx) in enumerate(
 
 results_df = pd.DataFrame(fold_results)
 
-results_df.to_csv(
-    "results/logistic_regression_5fold_results.csv",
-    index=False
+results_path = os.path.join(
+    RESULTS_DIR,
+    "logistic_regression_5fold_results.csv"
 )
+
+results_df.to_csv(results_path, index=False)
 
 metrics = [
     "Accuracy",
@@ -170,33 +185,29 @@ summary_df = pd.DataFrame({
     ]
 })
 
-summary_df.to_csv(
-    "results/logistic_regression_5fold_summary.csv",
-    index=False
+summary_path = os.path.join(
+    RESULTS_DIR,
+    "logistic_regression_5fold_summary.csv"
 )
+
+summary_df.to_csv(summary_path, index=False)
 
 print("\n" + "=" * 65)
 print("LOGISTIC REGRESSION 5-FOLD SUMMARY")
 print("=" * 65)
 
-print(summary_df.to_string(
-    index=False,
-    float_format="%.4f"
-))
+print(
+    summary_df.to_string(
+        index=False,
+        float_format="%.4f"
+    )
+)
 
 print("\nFold results saved to:")
-print("results/logistic_regression_5fold_results.csv")
+print(results_path)
 
 print("\nSummary saved to:")
-print("results/logistic_regression_5fold_summary.csv")
-
-
-
-
-
-
-
-
+print(summary_path)
 
 
 
