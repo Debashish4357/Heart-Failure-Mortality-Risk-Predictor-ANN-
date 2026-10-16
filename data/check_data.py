@@ -16,7 +16,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 DATA_PATH = os.path.join(
     PROJECT_ROOT,
-    "data",
+    "dataset",
     "heart_failure_clinical_records_dataset.csv"
 )
 

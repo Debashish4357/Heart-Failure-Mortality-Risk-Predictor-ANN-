@@ -1,4 +1,6 @@
 
+import os
+import sys
 import copy
 import pandas as pd
 import torch
@@ -7,6 +9,16 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
+
+# Project root and models directory
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+if MODELS_DIR not in sys.path:
+    sys.path.insert(0, MODELS_DIR)
 
 from ann_model import HeartFailureANN
 
@@ -19,9 +31,12 @@ from ann_model import HeartFailureANN
 torch.manual_seed(42)
 
 # 2. Load dataset
-df = pd.read_csv(
-    "data/heart_failure_clinical_records_dataset.csv"
+DATA_PATH = os.path.join(
+    PROJECT_ROOT,
+    "dataset",
+    "heart_failure_clinical_records_dataset.csv"
 )
+df = pd.read_csv(DATA_PATH)
 
 # 3. Separate features and target
 # Exclude 'time' to avoid leakage

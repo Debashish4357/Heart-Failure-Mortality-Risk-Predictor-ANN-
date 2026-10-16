@@ -25,7 +25,7 @@ feature_names = joblib.load(
 df = pd.read_csv(
     os.path.join(
         PROJECT_ROOT,
-        "data",
+        "dataset",
         "heart_failure_clinical_records_dataset.csv"
     )
 )

@@ -1,6 +1,17 @@
 
+import os
+import sys
 import torch
 import torch.nn as nn
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+if MODELS_DIR not in sys.path:
+    sys.path.insert(0, MODELS_DIR)
 
 from ann_model import HeartFailureANN
 

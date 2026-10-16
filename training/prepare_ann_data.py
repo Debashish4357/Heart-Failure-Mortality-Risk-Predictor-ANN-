@@ -1,19 +1,29 @@
 
+import os
+import sys
 import pandas as pd
 import torch
 
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+# Project root
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+sys.path.insert(0, PROJECT_ROOT)
 
 # ============================================================
 # STEP 8.1 — PREPARE ANN DATA
 # ============================================================
 
 # Load dataset
-df = pd.read_csv(
-    "data/heart_failure_clinical_records_dataset.csv"
+DATA_PATH = os.path.join(
+    PROJECT_ROOT,
+    "dataset",
+    "heart_failure_clinical_records_dataset.csv"
 )
+df = pd.read_csv(DATA_PATH)
 
 # Separate features and target
 # Exclude 'time' because it is leakage-prone

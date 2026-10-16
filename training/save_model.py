@@ -18,7 +18,7 @@ from models.logistic_model import create_logistic_model
 # 3. Load the dataset
 DATA_PATH = os.path.join(
     PROJECT_ROOT,
-    "data",
+    "dataset",
     "heart_failure_clinical_records_dataset.csv"
 )
 

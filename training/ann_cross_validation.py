@@ -1,5 +1,6 @@
 
 import os
+import sys
 import copy
 import random
 import numpy as np
@@ -18,6 +19,16 @@ from sklearn.metrics import (
     roc_auc_score,
     confusion_matrix
 )
+
+# Project root and models directory
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+if MODELS_DIR not in sys.path:
+    sys.path.insert(0, MODELS_DIR)
 
 from ann_model import HeartFailureANN
 
@@ -38,16 +49,20 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 # Load dataset
-df = pd.read_csv(
-    "data/heart_failure_clinical_records_dataset.csv"
+DATA_PATH = os.path.join(
+    PROJECT_ROOT,
+    "dataset",
+    "heart_failure_clinical_records_dataset.csv"
 )
+df = pd.read_csv(DATA_PATH)
 
 # Exclude target and leakage-prone time column
 X = df.drop(columns=["DEATH_EVENT", "time"])
 y = df["DEATH_EVENT"]
 
 # Create output folder
-os.makedirs("results", exist_ok=True)
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # Five outer folds
 outer_cv = StratifiedKFold(
@@ -281,7 +296,7 @@ for fold, (outer_train_idx, test_idx) in enumerate(
 
 results_df = pd.DataFrame(fold_results)
 
-results_path = "results/ann_5fold_results.csv"
+results_path = os.path.join(RESULTS_DIR, "ann_5fold_results.csv")
 results_df.to_csv(results_path, index=False)
 
 metric_columns = [
@@ -305,7 +320,7 @@ summary_df = pd.DataFrame({
     ]
 })
 
-summary_path = "results/ann_5fold_summary.csv"
+summary_path = os.path.join(RESULTS_DIR, "ann_5fold_summary.csv")
 summary_df.to_csv(summary_path, index=False)
 
 print("\n" + "=" * 65)

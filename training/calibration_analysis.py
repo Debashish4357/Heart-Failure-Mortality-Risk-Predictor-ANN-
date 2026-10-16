@@ -23,7 +23,7 @@ from models.logistic_model import create_logistic_model
 
 DATA_PATH = os.path.join(
     PROJECT_ROOT,
-    "data",
+    "dataset",
     "heart_failure_clinical_records_dataset.csv"
 )
 
